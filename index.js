@@ -57,6 +57,26 @@ app.post("/person", (req, res) => {
   res.status(201).json(newPerson);
 });
 
+app.put("/person/:id", (req, res) => {
+  const { error } = personSchema.validate(req.body);
+  if (error) {
+    return res.status(400).json({ message: error.details[0].message });
+  }
+
+  const persons = req.app.get("db");
+  const index = persons.findIndex((p) => p.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ message: "Person not found" });
+  }
+
+  persons[index] = {
+    id: req.params.id,
+    ...req.body,
+  };
+
+  res.json(persons[index]);
+});
+
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`App listening on port ${PORT}!`);
