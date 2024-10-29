@@ -23,6 +23,12 @@ let persons = [
 
 app.set("db", persons);
 
+const personSchema = Joi.object({
+  name: Joi.string().required(),
+  age: Joi.number().required(),
+  hobbies: Joi.array().items(Joi.string()).required(),
+});
+
 app.get("/person", (req, res) => {
   res.json(persons);
 });
@@ -33,6 +39,22 @@ app.get("/person/:id", (req, res) => {
     return res.status(404).json({ message: "Person not found" });
   }
   res.json(person);
+});
+
+app.post("/person", (req, res) => {
+  const { error } = personSchema.validate(req.body);
+  if (error) {
+    return res.status(400).json({ message: error.details[0].message });
+  }
+
+  const newPerson = {
+    id: uuidv4(),
+    ...req.body,
+  };
+
+  const persons = req.app.get("db");
+  persons.push(newPerson);
+  res.status(201).json(newPerson);
 });
 
 if (require.main === module) {
