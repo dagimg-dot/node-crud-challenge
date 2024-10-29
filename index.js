@@ -23,6 +23,18 @@ let persons = [
 
 app.set("db", persons);
 
+app.get("/person", (req, res) => {
+  res.json(persons);
+});
+
+app.get("/person/:id", (req, res) => {
+  const person = persons.find((p) => p.id === req.params.id);
+  if (!person) {
+    return res.status(404).json({ message: "Person not found" });
+  }
+  res.json(person);
+});
+
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`App listening on port ${PORT}!`);
