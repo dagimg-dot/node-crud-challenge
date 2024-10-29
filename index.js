@@ -1,17 +1,32 @@
-const express = require('express')
-const app = express()
+const express = require("express");
+const { v4: uuidv4 } = require("uuid");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const Joi = require("joi");
 
-let persons = [{
-    id: '1',
-    name: 'Sam',
-    age: '26',
-    hobbies: []    
-}] //This is your in memory database
+const app = express();
 
-app.set('db', persons)
-//TODO: Implement crud of person
+// Server Configuration
+const PORT = 3000;
+
+app.use(cors());
+app.use(bodyParser.json());
+
+let persons = [
+  {
+    id: "1",
+    name: "Sam",
+    age: 26,
+    hobbies: [],
+  },
+];
+
+app.set("db", persons);
 
 if (require.main === module) {
-    app.listen(3000)
+  app.listen(PORT, () => {
+    console.log(`App listening on port ${PORT}!`);
+  });
 }
+
 module.exports = app;
