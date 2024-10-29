@@ -29,6 +29,7 @@ const personSchema = Joi.object({
   hobbies: Joi.array().items(Joi.string()).required(),
 });
 
+// Routes
 app.get("/person", (req, res) => {
   res.json(persons);
 });
@@ -75,6 +76,16 @@ app.put("/person/:id", (req, res) => {
   };
 
   res.json(persons[index]);
+});
+
+app.delete("/person/:id", (req, res) => {
+  const index = persons.findIndex((p) => p.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ message: "Person not found" });
+  }
+
+  persons.splice(index, 1);
+  res.status(204).send();
 });
 
 if (require.main === module) {
