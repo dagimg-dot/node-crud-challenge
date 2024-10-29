@@ -29,64 +29,116 @@ const personSchema = Joi.object({
   hobbies: Joi.array().items(Joi.string()).required(),
 });
 
+const ErrorTypes = {
+  NOT_FOUND: "NOT_FOUND",
+  VALIDATION: "VALIDATION",
+  INTERNAL: "INTERNAL",
+};
+
+const ErrorMessages = {
+  PERSON_NOT_FOUND: "Person not found",
+  RESOURCE_NOT_FOUND: "Resource not found",
+  INTERNAL_ERROR: "Internal Server Error",
+};
+
+const createError = (type, message) => ({
+  type,
+  message,
+  timestamp: new Date().toISOString(),
+});
+
+const sendError = (res, error) => {
+  const statusCodes = {
+    [ErrorTypes.NOT_FOUND]: 404,
+    [ErrorTypes.VALIDATION]: 400,
+    [ErrorTypes.INTERNAL]: 500,
+  };
+
+  res.status(statusCodes[error.type]).json({
+    error: error.message,
+    timestamp: error.timestamp,
+  });
+};
+
+const validatePerson = (req, res, next) => {
+  const { error } = personSchema.validate(req.body);
+  if (error) {
+    return sendError(
+      res,
+      createError(ErrorTypes.VALIDATION, error.details[0].message)
+    );
+  }
+  next();
+};
+
+const findPerson = (req, res, next) => {
+  const person = persons.find((p) => p.id === req.params.id);
+  if (!person) {
+    return sendError(
+      res,
+      createError(ErrorTypes.NOT_FOUND, ErrorMessages.PERSON_NOT_FOUND)
+    );
+  }
+  req.person = person;
+  next();
+};
+
 // Routes
 app.get("/person", (req, res) => {
   res.json(persons);
 });
 
-app.get("/person/:id", (req, res) => {
-  const person = persons.find((p) => p.id === req.params.id);
-  if (!person) {
-    return res.status(404).json({ message: "Person not found" });
-  }
-  res.json(person);
+app.get("/person/:id", findPerson, (req, res) => {
+  res.json(req.person);
 });
 
-app.post("/person", (req, res) => {
-  const { error } = personSchema.validate(req.body);
-  if (error) {
-    return res.status(400).json({ message: error.details[0].message });
-  }
-
+app.post("/person", validatePerson, (req, res) => {
   const newPerson = {
     id: uuidv4(),
-    ...req.body,
+    name: req.body.name,
+    age: req.body.age,
+    hobbies: req.body.hobbies,
   };
 
-  const persons = req.app.get("db");
   persons.push(newPerson);
   res.status(201).json(newPerson);
 });
 
-app.put("/person/:id", (req, res) => {
-  const { error } = personSchema.validate(req.body);
-  if (error) {
-    return res.status(400).json({ message: error.details[0].message });
-  }
-
-  const persons = req.app.get("db");
+app.put("/person/:id", validatePerson, findPerson, (req, res) => {
   const index = persons.findIndex((p) => p.id === req.params.id);
-  if (index === -1) {
-    return res.status(404).json({ message: "Person not found" });
-  }
-
   persons[index] = {
     id: req.params.id,
-    ...req.body,
+    name: req.body.name,
+    age: req.body.age,
+    hobbies: req.body.hobbies,
   };
 
   res.json(persons[index]);
 });
 
-app.delete("/person/:id", (req, res) => {
+app.delete("/person/:id", findPerson, (req, res) => {
   const index = persons.findIndex((p) => p.id === req.params.id);
-  if (index === -1) {
-    return res.status(404).json({ message: "Person not found" });
-  }
-
   persons.splice(index, 1);
   res.status(204).send();
 });
+
+// Special routes
+app.use((req, res) => {
+  sendError(
+    res,
+    createError(ErrorTypes.NOT_FOUND, ErrorMessages.RESOURCE_NOT_FOUND)
+  );
+});
+
+const errorHandler = (err, req, res, next) => {
+  console.error(err.stack);
+  sendError(
+    res,
+    createError(ErrorTypes.INTERNAL, ErrorMessages.INTERNAL_ERROR)
+  );
+};
+
+app.use(errorHandler);
 
 if (require.main === module) {
   app.listen(PORT, () => {
